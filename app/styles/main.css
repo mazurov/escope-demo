@@ -1,0 +1,33 @@
+/* Will be compiled down to a single stylesheet with your sass files */
+html,body{
+    height: 100%;
+}
+
+.CodeMirror {
+  margin:0px;
+  padding:0px;
+  border: 1px solid #eee;
+  height: auto;
+}
+
+
+.CodeMirror-scroll {
+  overflow-y: hidden;
+  overflow-x: auto;
+}
+
+.cm-mark {
+  background-color: #f7f7d2;
+}
+
+#treeview ul {
+  list-style-type: none;
+}
+
+.footer {
+    text-align: center;
+    padding: 30px 0;
+    margin-top: 70px;
+    border-top: 1px solid #e5e5e5;
+    background-color: #f5f5f5;
+}

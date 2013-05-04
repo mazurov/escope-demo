@@ -1,0 +1,13 @@
+{
+  "name": "escope-demo",
+  "version": "0.1.0",
+  "dependencies": {
+    "requirejs": "~2.1.4",
+    "modernizr": "~2.6.2",
+    "jquery": "~1.9.1",
+    "esprima": "latest",
+    "escope": "git://github.com/Constellation/escope.git",
+    "codemirror": "latest"
+  },
+  "devDependencies": {}
+}

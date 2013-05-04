@@ -1,0 +1,151 @@
+<!doctype html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+        <link rel="stylesheet" href="components/codemirror/lib/codemirror.css">
+        <link rel="stylesheet" href="styles/bootstrap.css">
+        <link rel="stylesheet" href="styles/github.css">
+        <link rel="stylesheet" href="styles/main.css">
+        <!-- build:js scripts/vendor/modernizr.js -->
+        <script src="components/modernizr/modernizr.js"></script>
+        <!-- endbuild -->
+    </head>
+    <body>
+        <div class="container-fluid">
+            <div class="navbar navbar-inverse navbar-fixed-top">
+              <div class="navbar-inner">
+                <div class="container-fluid">
+                  <a class="brand" href="#">Escope Library: Tree Visualization    </a>
+                </div>
+              </div>
+            </div>
+            <div class="row-fluid" style="margin-top:40px">
+              <div class="span6"><h2>Javascript code</h2></div>
+              <div class="span6"><h2>Escope tree</h2></div>
+            </div>
+            <div class="row-fluid">
+              <div class="span6">
+<textarea id="editor">
+function MONAD(modifier) {
+    'use strict';
+
+    var prototype = Object.create(null);
+    prototype.is_monad = true;
+
+    function unit(value) {
+        var monad = Object.create(prototype);
+        monad.bind = function (func, args) {
+            return func.apply(
+                undefined,
+                [value].concat(Array.prototype.slice.apply(args || []))
+            );
+        };
+        if (typeof modifier === 'function') {
+            value = modifier(monad, value);
+        }
+        return monad;
+    }
+    unit.method = function (name, func) {
+        prototype[name] = func;
+        return unit;
+    };
+    unit.lift_value = function (name, func) {
+        prototype[name] = function () {
+            return this.bind(func, arguments);
+        };
+        return unit;
+    };
+    unit.lift = function (name, func) {
+        prototype[name] = function () {
+            var result = this.bind(func, arguments);
+            return result && result.is_monad === true ? result : unit(result);
+        };
+        return unit;
+    };
+    return unit;
+}
+
+MONAD(modifier);
+</textarea>
+<br/>
+<h3>How to get javascript scopes</h3>
+<h4>Web</h4>
+<b>Download required scripts:</b>
+<pre><code class="bash">
+$> wget https://raw.github.com/ariya/esprima/master/esprima.js
+$> wget https://raw.github.com/Constellation/estraverse/master/estraverse.js
+$> wget https://raw.github.com/Constellation/escope/master/escope.js
+</code></pre>
+<b>Example:</b>
+<pre><code class="html">
+&lt;script type=&quot;text/javascript&quot; src=&quot;esprima.js&quot;&gt;&lt;/script&gt;
+&lt;script type=&quot;text/javascript&quot; src=&quot;estraverse.js&quot;&gt;&lt;/script&gt;
+&lt;script type=&quot;text/javascript&quot; src=&quot;escope.js&quot;&gt;&lt;/script&gt;
+...
+&lt;script type=&quot;text/javascript&quot;&gt;
+    var value = "...";
+    var ast = esprima.parse(value, {range: true, loc: true});
+    var scopes = escope.analyze(ast).scopes;
+    console.log(scopes);
+&lt;/script&gt;
+</pre></code>
+<br/>
+<h4>NodeJS</h4>
+<b>Install required node packages:</b>
+<pre><code class="bash">
+$> npm install esprima
+$> npm install escope
+</code></pre>
+<b>Example:</b>
+<pre><code class="javascript">
+var esprima = require('esprima');
+var escope = require('escope');
+
+var value = "...";
+var ast = esprima.parse(value, {range: true, loc: true});
+var scopes = escope.analyze(ast).scopes;
+
+console.log(scopes);
+</pre></code>
+
+              </div>
+              <div class="span6">
+                <div id="treeview"></div>
+              </div>
+            </div>
+</div>
+<footer class="footer">
+    <div class="container">
+          <p> Coded by <a href="https://github.com/mazurov">@mazurov <img src="images/github.png" style="width:24px"/> </a></p>
+          <ul class="footer-links">
+              <li><a href="https://github.com/Constellation/escope">Escope library</a> by <a href="https://github.com/Constellation">@Constellation</a></li>
+          </ul>
+    </div>
+</footer>
+
+
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+        <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
+        <script>
+            var _gaq=[['_setAccount','UA-XXXXX-X'],['_trackPageview']];
+            (function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+            g.src=('https:'==location.protocol?'//ssl':'//www')+'.google-analytics.com/ga.js';
+            s.parentNode.insertBefore(g,s)}(document,'script'));
+        </script>
+
+        <!-- build:js scripts/main.js -->
+        <script data-main="scripts/main" src="components/requirejs/require.js"></script>
+        <!-- endbuild -->
+</body>
+</html>
