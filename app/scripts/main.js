@@ -1,10 +1,10 @@
 require.config({
     paths: {
-        jquery: '../components/jquery/jquery',
+        jquery: '../components/jquery/jquery.min',
         bootstrap: 'vendor/bootstrap',
         esprima: '../components/esprima/esprima',
-        estraverse: '../components/estraverse/estraverse',
-        escope: '../components/escope/escope',
+        // estraverse: '../components/estraverse/estraverse',
+        // escope: '../components/escope/escope',
         hljs: 'vendor/highlight.pack',
         codemirror: '../components/codemirror/lib/codemirror',
         'codemirror.javascript': '../components/codemirror/mode/javascript/javascript'
@@ -16,9 +16,6 @@ require.config({
         },
         codemirror : {
             exports: 'CodeMirror'
-        },
-        hljs : {
-            exports: 'hljs'
         },
         'codemirror.javascript': ['codemirror']
     }

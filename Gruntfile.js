@@ -269,7 +269,8 @@ module.exports = function (grunt) {
                         '*.{ico,txt}',
                         '.htaccess',
                         'images/{,*/}*.{webp,gif}',
-                        'styles/fonts/*'
+                        'styles/fonts/*',
+                        'scripts/vendor/es*.js'
                     ]
                 }]
             }
@@ -334,7 +335,7 @@ module.exports = function (grunt) {
         'concat',
         'uglify',
         'copy',
-        'rev',
+        //'rev',
         'usemin'
     ]);
 

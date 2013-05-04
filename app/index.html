@@ -10,9 +10,11 @@
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width">
         <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+        <!-- build:css styles/vendors.css -->
         <link rel="stylesheet" href="components/codemirror/lib/codemirror.css">
         <link rel="stylesheet" href="styles/bootstrap.css">
         <link rel="stylesheet" href="styles/github.css">
+        <!-- endbuild -->
         <link rel="stylesheet" href="styles/main.css">
         <!-- build:js scripts/vendor/modernizr.js -->
         <script src="components/modernizr/modernizr.js"></script>
@@ -23,13 +25,13 @@
             <div class="navbar navbar-inverse navbar-fixed-top">
               <div class="navbar-inner">
                 <div class="container-fluid">
-                  <a class="brand" href="#">Escope Library: Tree Visualization    </a>
+                  <a class="brand" href="#">Escope Library: Scope Objects Visualization</a>
                 </div>
               </div>
             </div>
             <div class="row-fluid" style="margin-top:40px">
               <div class="span6"><h2>Javascript code</h2></div>
-              <div class="span6"><h2>Escope tree</h2></div>
+              <div class="span6"><h2>Scopes</h2></div>
             </div>
             <div class="row-fluid">
               <div class="span6">
@@ -143,7 +145,9 @@ console.log(scopes);
             g.src=('https:'==location.protocol?'//ssl':'//www')+'.google-analytics.com/ga.js';
             s.parentNode.insertBefore(g,s)}(document,'script'));
         </script>
-
+        <!--<script src="scripts/vendor/esprima.js"></script>-->
+        <script src="scripts/vendor/estraverse.js"></script>
+        <script src="scripts/vendor/escope.js"></script>
         <!-- build:js scripts/main.js -->
         <script data-main="scripts/main" src="components/requirejs/require.js"></script>
         <!-- endbuild -->

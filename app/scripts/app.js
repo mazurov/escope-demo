@@ -1,6 +1,6 @@
-/*global define */
-define(['jquery', 'esprima', 'escope', 'codemirror', 'codemirror.javascript'],
-                                    function($, esprima, escope, CodeMirror) {
+/*global define, escope */
+define(['jquery', 'esprima', 'codemirror', 'codemirror.javascript'],
+                                    function($, esprima, CodeMirror) {
     'use strict';
     var exports = {};
     exports.run = function() {
@@ -44,7 +44,7 @@ define(['jquery', 'esprima', 'escope', 'codemirror', 'codemirror.javascript'],
 
         var hasChilds = function(node) {
             var p;
-            if (typeof node == "object") {
+            if (typeof node === 'object') {
                 for (p in node) {
                     if (node.hasOwnProperty(p)) {
                         return true;
@@ -75,25 +75,25 @@ define(['jquery', 'esprima', 'escope', 'codemirror', 'codemirror.javascript'],
         };
 
         var traverseNode = function(node, key, level) {
-            if (!node) return;
+            if (!node) {
+                return;
+            }
             var name,
                 result,
-                txt,
-                childs,
-                child,
                 value,
                 innerValue,
                 icon,
                 locLink;
 
-            name = node.__proto__.constructor.name;
+            name = node.constructor.name;
+
             if (!level) {
                 level = 0;
                 result = document.createElement('div');
             } else {
                 result = document.createElement('li');
                 value = name;
-                if (typeof node !== "object") {
+                if (typeof node !== 'object') {
                     value = node.toString();
                 }
                 innerValue = '<b>' + key + '</b>: ' + value;
@@ -115,7 +115,7 @@ define(['jquery', 'esprima', 'escope', 'codemirror', 'codemirror.javascript'],
             }
 
             if (hasChilds(node)) {
-                if (level == 0) {
+                if (level === 0) {
                     addChilds(result, node, level);
                 } else {
                     $(result).find('a.tree-open').data('node', node);
