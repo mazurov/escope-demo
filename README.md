@@ -1,3 +1,7 @@
+## Demo
+
+[![escope-demo](https://raw.github.com/mazurov/escope-demo/master/app/images/screenshot.gif)](http://mazurov.github.io/escope-demo/)
+
 ## How to get javascript scopes 
 ### Web
 
