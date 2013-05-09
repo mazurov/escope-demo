@@ -1,5 +1,6 @@
 /*
-  Copyright (C) 2012 Yusuke Suzuki <utatane.tea@gmail.com>
+  Copyright (C) 2012-2013 Yusuke Suzuki <utatane.tea@gmail.com>
+  Copyright (C) 2013 Alex Seville <hi@alexanderseville.com>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -23,7 +24,7 @@
 */
 
 /*jslint bitwise:true */
-/*global escope:true, exports:true, define:true*/
+/*global exports:true, define:true, require:true*/
 (function (factory, global) {
     'use strict';
 
@@ -55,11 +56,12 @@
 }(function (exports, global, estraverse) {
     'use strict';
 
-    var estraverse,
-        Syntax,
+    var Syntax,
         Map,
         currentScope,
-        scopes;
+        globalScope,
+        scopes,
+        directive;
 
     Syntax = estraverse.Syntax;
 
@@ -156,16 +158,67 @@
     Variable.Parameter = 'Parameter';
     Variable.FunctionName = 'FunctionName';
     Variable.Variable = 'Variable';
+    Variable.ImplicitGlobalVariable = 'ImplicitGlobalVariable';
+
+    function isStrictScope(scope, block) {
+        var body, i, iz, stmt, expr;
+
+        // When upper scope is exists and strict, inner scope is also strict.
+        if (scope.upper && scope.upper.isStrict) {
+            return true;
+        }
+
+        if (scope.type === 'function') {
+            body = block.body;
+        } else if (scope.type === 'global') {
+            body = block;
+        } else {
+            return false;
+        }
+
+        if (directive) {
+            for (i = 0, iz = body.body.length; i < iz; ++i) {
+                stmt = body.body[i];
+                if (stmt.type !== 'DirectiveStatement') {
+                    break;
+                }
+                if (stmt.raw === '"use strict"' || stmt.raw === '\'use strict\'') {
+                    return true;
+                }
+            }
+        } else {
+            for (i = 0, iz = body.body.length; i < iz; ++i) {
+                stmt = body.body[i];
+                if (stmt.type !== Syntax.ExpressionStatement) {
+                    break;
+                }
+                expr = stmt.expression;
+                if (expr.type !== Syntax.Literal || typeof expr.value !== 'string') {
+                    break;
+                }
+                if (expr.raw != null) {
+                    if (expr.raw === '"use strict"' || expr.raw === '\'use strict\'') {
+                        return true;
+                    }
+                } else {
+                    if (expr.value === 'use strict') {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
 
     function Scope(block, opt) {
-        var variable;
+        var variable, body;
 
         this.type =
             (block.type === Syntax.CatchClause) ? 'catch' :
             (block.type === Syntax.WithStatement) ? 'with' :
             (block.type === Syntax.Program) ? 'global' : 'function';
-        this.set = new Map;
-        this.taints = new Map;
+        this.set = new Map();
+        this.taints = new Map();
         this.dynamic = this.type === 'global' || this.type === 'with';
         this.block = block;
         this.through = [];
@@ -177,7 +230,7 @@
         this.functionExpressionScope = false;
         this.directCallToEvalScope = false;
         this.thisFound = false;
-
+        body = this.type === 'function' ? block.body : block;
         if (opt.naming) {
             this.__define(block.id, {
                 type: Variable.FunctionName,
@@ -198,14 +251,19 @@
             }
         }
 
-        // RAII
         this.upper = currentScope;
+        this.isStrict = isStrictScope(this, block);
+
+        // RAII
         currentScope = this;
+        if (this.type === 'global') {
+            globalScope = this;
+        }
         scopes.push(this);
     }
 
     Scope.prototype.__close = function __close() {
-        var i, iz, ref, set, current;
+        var i, iz, ref, current;
 
         // Because if this is global environment, upper is null
         if (!this.dynamic) {
@@ -241,7 +299,7 @@
     };
 
     Scope.prototype.__resolve = function __resolve(ref) {
-        var i, iz, variable, name;
+        var variable, name;
         name = ref.identifier.name;
         if (this.set.has(name)) {
             variable = this.set.get(name);
@@ -313,8 +371,8 @@
     // returns resolved reference
     Scope.prototype.resolve = function resolve(ident) {
         var ref, i, iz;
-        assert(this.__isClosed(), "scope should be closed");
-        assert(ident.type === Syntax.Identifier, "target should be identifier");
+        assert(this.__isClosed(), 'scope should be closed');
+        assert(ident.type === Syntax.Identifier, 'target should be identifier');
         for (i = 0, iz = this.references.length; i < iz; ++i) {
             ref = this.references[i];
             if (ref.identifier === ident) {
@@ -384,8 +442,8 @@
         }
     };
 
-    Scope.prototype.isUsedName = function(name){
-        if(this.set.has(name)) {
+    Scope.prototype.isUsedName = function (name) {
+        if (this.set.has(name)) {
             return true;
         }
         for (var i = 0, iz = this.through.length; i < iz; ++i) {
@@ -462,13 +520,17 @@
         return node.type === Syntax.Program || node.type === Syntax.FunctionExpression || node.type === Syntax.FunctionDeclaration;
     };
 
-    function analyze(tree) {
-        scopes = [];
-        currentScope = null;
+    function analyze(tree, options) {
+        var resultScopes;
+
+        resultScopes = scopes = [];
+        currentScope = null,
+        globalScope = null;
+        directive = options && options.directive;
 
         // attach scope and collect / resolve names
         estraverse.traverse(tree, {
-            enter: function enter(node, parent) {
+            enter: function enter(node) {
                 var i, iz, decl;
                 if (Scope.isScopeRequired(node)) {
                     new Scope(node, {});
@@ -476,6 +538,15 @@
 
                 switch (node.type) {
                 case Syntax.AssignmentExpression:
+                    //check for implicit global variable declaration
+                    if (!currentScope.isStrict && node.left.name && !currentScope.isUsedName(node.left.name) && node.operator === '=') {
+                        //create an implicit global variable from assignment expression
+                        globalScope.__define(node.left, {
+                            type: Variable.ImplicitGlobalVariable,
+                            name: node.left,
+                            node: node
+                        });
+                    }
                     if (node.operator === '=') {
                         currentScope.__referencing(node.left, Reference.WRITE, node.right);
                     } else {
@@ -709,11 +780,13 @@
             }
         });
         assert(currentScope === null);
+        globalScope = null;
+        scopes = null;
 
-        return new ScopeManager(scopes);
+        return new ScopeManager(resultScopes);
     }
 
-    exports.version = '0.0.14-dev';
+    exports.version = '0.0.15-dev';
     exports.Reference = Reference;
     exports.Variable = Variable;
     exports.Scope = Scope;

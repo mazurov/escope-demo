@@ -152,6 +152,8 @@ define(['jquery', 'esprima', 'codemirror', 'codemirror.javascript'],
         editor.on('change', draw);
         draw();
 
+        $('#escope-version').text(escope.version);
+
     };  // end run
     return exports;
 });  // End define
