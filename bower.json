@@ -5,6 +5,8 @@
     "requirejs": "~2.1.4",
     "modernizr": "~2.6.2",
     "jquery": "~1.9.1",
+    "escope": "~1.0.0",
+    "esprima": "~1.0.4",
     "codemirror": "latest"
   },
   "devDependencies": {}
