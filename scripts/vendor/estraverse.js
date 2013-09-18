@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2012 Yusuke Suzuki <utatane.tea@gmail.com>
+  Copyright (C) 2012-2013 Yusuke Suzuki <utatane.tea@gmail.com>
   Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
 
   Redistribution and use in source and binary forms, with or without
@@ -22,10 +22,10 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
   THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-/*jslint vars:false*/
+/*jslint vars:false, bitwise:true*/
 /*jshint indent:4*/
-/*global exports:true, define:true, window:true*/
-(function (factory) {
+/*global exports:true, define:true*/
+(function (root, factory) {
     'use strict';
 
     // Universal Module Definition (UMD) to support AMD, CommonJS/Node.js,
@@ -35,9 +35,9 @@
     } else if (typeof exports !== 'undefined') {
         factory(exports);
     } else {
-        factory((window.estraverse = {}));
+        factory((root.estraverse = {}));
     }
-}(function (exports) {
+}(this, function (exports) {
     'use strict';
 
     var Syntax,
@@ -50,6 +50,7 @@
     Syntax = {
         AssignmentExpression: 'AssignmentExpression',
         ArrayExpression: 'ArrayExpression',
+        ArrowFunctionExpression: 'ArrowFunctionExpression',
         BlockStatement: 'BlockStatement',
         BinaryExpression: 'BinaryExpression',
         BreakStatement: 'BreakStatement',
@@ -88,8 +89,11 @@
         VariableDeclaration: 'VariableDeclaration',
         VariableDeclarator: 'VariableDeclarator',
         WhileStatement: 'WhileStatement',
-        WithStatement: 'WithStatement'
+        WithStatement: 'WithStatement',
+        YieldExpression: 'YieldExpression'
     };
+
+    function ignoreJSHintError() { }
 
     isArray = Array.isArray;
     if (!isArray) {
@@ -98,9 +102,78 @@
         };
     }
 
+    function deepCopy(obj) {
+        var ret = {}, key, val;
+        for (key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                val = obj[key];
+                if (typeof val === 'object' && val !== null) {
+                    ret[key] = deepCopy(val);
+                } else {
+                    ret[key] = val;
+                }
+            }
+        }
+        return ret;
+    }
+
+    function shallowCopy(obj) {
+        var ret = {}, key;
+        for (key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                ret[key] = obj[key];
+            }
+        }
+        return ret;
+    }
+    ignoreJSHintError(shallowCopy);
+
+    // based on LLVM libc++ upper_bound / lower_bound
+    // MIT License
+
+    function upperBound(array, func) {
+        var diff, len, i, current;
+
+        len = array.length;
+        i = 0;
+
+        while (len) {
+            diff = len >>> 1;
+            current = i + diff;
+            if (func(array[current])) {
+                len = diff;
+            } else {
+                i = current + 1;
+                len -= diff + 1;
+            }
+        }
+        return i;
+    }
+
+    function lowerBound(array, func) {
+        var diff, len, i, current;
+
+        len = array.length;
+        i = 0;
+
+        while (len) {
+            diff = len >>> 1;
+            current = i + diff;
+            if (func(array[current])) {
+                i = current + 1;
+                len -= diff + 1;
+            } else {
+                len = diff;
+            }
+        }
+        return i;
+    }
+    ignoreJSHintError(lowerBound);
+
     VisitorKeys = {
         AssignmentExpression: ['left', 'right'],
         ArrayExpression: ['elements'],
+        ArrowFunctionExpression: ['params', 'body'],
         BlockStatement: ['body'],
         BinaryExpression: ['left', 'right'],
         BreakStatement: ['label'],
@@ -133,13 +206,14 @@
         SwitchCase: ['test', 'consequent'],
         ThisExpression: [],
         ThrowStatement: ['argument'],
-        TryStatement: ['block', 'handlers', 'finalizer'],
+        TryStatement: ['block', 'handlers', 'handler', 'guardedHandlers', 'finalizer'],
         UnaryExpression: ['argument'],
         UpdateExpression: ['argument'],
         VariableDeclaration: ['declarations'],
         VariableDeclarator: ['id', 'init'],
         WhileStatement: ['test', 'body'],
-        WithStatement: ['object', 'body']
+        WithStatement: ['object', 'body'],
+        YieldExpression: ['argument']
     };
 
     // unique id
@@ -167,14 +241,7 @@
         this.ref = ref;
     }
 
-    function Controller(root, visitor) {
-        this.visitor = visitor;
-        this.root = root;
-        this.__worklist = [];
-        this.__leavelist = [];
-        this.__current = null;
-        this.__state = null;
-    }
+    function Controller() { }
 
     // API:
     // return property path array from root to current node
@@ -260,7 +327,16 @@
         this.notify(BREAK);
     };
 
-    function traverse(root, visitor) {
+    Controller.prototype.__initialize = function(root, visitor) {
+        this.visitor = visitor;
+        this.root = root;
+        this.__worklist = [];
+        this.__leavelist = [];
+        this.__current = null;
+        this.__state = null;
+    };
+
+    Controller.prototype.traverse = function traverse(root, visitor) {
         var worklist,
             leavelist,
             element,
@@ -272,15 +348,15 @@
             current2,
             candidates,
             candidate,
-            sentinel,
-            controller;
+            sentinel;
+
+        this.__initialize(root, visitor);
 
         sentinel = {};
-        controller = new Controller(root, visitor);
 
         // reference
-        worklist = controller.__worklist;
-        leavelist = controller.__leavelist;
+        worklist = this.__worklist;
+        leavelist = this.__leavelist;
 
         // initialize
         worklist.push(new Element(root, null, null, null));
@@ -292,9 +368,9 @@
             if (element === sentinel) {
                 element = leavelist.pop();
 
-                ret = controller.__execute(visitor.leave, element);
+                ret = this.__execute(visitor.leave, element);
 
-                if (controller.__state === BREAK || ret === BREAK) {
+                if (this.__state === BREAK || ret === BREAK) {
                     return;
                 }
                 continue;
@@ -302,16 +378,16 @@
 
             if (element.node) {
 
-                ret = controller.__execute(visitor.enter, element);
+                ret = this.__execute(visitor.enter, element);
 
-                if (controller.__state === BREAK || ret === BREAK) {
+                if (this.__state === BREAK || ret === BREAK) {
                     return;
                 }
 
                 worklist.push(sentinel);
                 leavelist.push(element);
 
-                if (controller.__state === SKIP || ret === SKIP) {
+                if (this.__state === SKIP || ret === SKIP) {
                     continue;
                 }
 
@@ -337,7 +413,7 @@
                         if (!candidate[current2]) {
                             continue;
                         }
-                        if (nodeType === Syntax.ObjectExpression && 'properties' === candidates[current] && null == candidates[current].type) {
+                        if (nodeType === Syntax.ObjectExpression && 'properties' === candidates[current]) {
                             element = new Element(candidate[current2], [key, current2], 'Property', null);
                         } else {
                             element = new Element(candidate[current2], [key, current2], null, null);
@@ -347,9 +423,9 @@
                 }
             }
         }
-    }
+    };
 
-    function replace(root, visitor) {
+    Controller.prototype.replace = function replace(root, visitor) {
         var worklist,
             leavelist,
             node,
@@ -361,16 +437,16 @@
             candidates,
             candidate,
             sentinel,
-            controller,
             outer,
             key;
 
+        this.__initialize(root, visitor);
+
         sentinel = {};
-        controller = new Controller(root, visitor);
 
         // reference
-        worklist = controller.__worklist;
-        leavelist = controller.__leavelist;
+        worklist = this.__worklist;
+        leavelist = this.__leavelist;
 
         // initialize
         outer = {
@@ -386,7 +462,7 @@
             if (element === sentinel) {
                 element = leavelist.pop();
 
-                target = controller.__execute(visitor.leave, element);
+                target = this.__execute(visitor.leave, element);
 
                 // node may be replaced with null,
                 // so distinguish between undefined and null in this place
@@ -395,13 +471,13 @@
                     element.ref.replace(target);
                 }
 
-                if (controller.__state === BREAK || target === BREAK) {
+                if (this.__state === BREAK || target === BREAK) {
                     return outer.root;
                 }
                 continue;
             }
 
-            target = controller.__execute(visitor.enter, element);
+            target = this.__execute(visitor.enter, element);
 
             // node may be replaced with null,
             // so distinguish between undefined and null in this place
@@ -411,7 +487,7 @@
                 element.node = target;
             }
 
-            if (controller.__state === BREAK || target === BREAK) {
+            if (this.__state === BREAK || target === BREAK) {
                 return outer.root;
             }
 
@@ -424,7 +500,7 @@
             worklist.push(sentinel);
             leavelist.push(element);
 
-            if (controller.__state === SKIP || target === SKIP) {
+            if (this.__state === SKIP || target === SKIP) {
                 continue;
             }
 
@@ -449,7 +525,7 @@
                     if (!candidate[current2]) {
                         continue;
                     }
-                    if (nodeType === Syntax.ObjectExpression && 'properties' === candidates[current] && null == candidates[current].type) {
+                    if (nodeType === Syntax.ObjectExpression && 'properties' === candidates[current]) {
                         element = new Element(candidate[current2], [key, current2], 'Property', new Reference(candidate, current2));
                     } else {
                         element = new Element(candidate[current2], [key, current2], null, new Reference(candidate, current2));
@@ -460,12 +536,143 @@
         }
 
         return outer.root;
+    };
+
+    function traverse(root, visitor) {
+        var controller = new Controller();
+        return controller.traverse(root, visitor);
     }
 
-    exports.version = '1.1.1';
+    function replace(root, visitor) {
+        var controller = new Controller();
+        return controller.replace(root, visitor);
+    }
+
+    function extendCommentRange(comment, tokens) {
+        var target, token;
+
+        target = upperBound(tokens, function search(token) {
+            return token.range[0] > comment.range[0];
+        });
+
+        comment.extendedRange = [comment.range[0], comment.range[1]];
+
+        if (target !== tokens.length) {
+            comment.extendedRange[1] = tokens[target].range[0];
+        }
+
+        target -= 1;
+        if (target >= 0) {
+            if (target < tokens.length) {
+                comment.extendedRange[0] = tokens[target].range[1];
+            } else if (token.length) {
+                comment.extendedRange[1] = tokens[tokens.length - 1].range[0];
+            }
+        }
+
+        return comment;
+    }
+
+    function attachComments(tree, providedComments, tokens) {
+        // At first, we should calculate extended comment ranges.
+        var comments = [], comment, len, i, cursor;
+
+        if (!tree.range) {
+            throw new Error('attachComments needs range information');
+        }
+
+        // tokens array is empty, we attach comments to tree as 'leadingComments'
+        if (!tokens.length) {
+            if (providedComments.length) {
+                for (i = 0, len = providedComments.length; i < len; i += 1) {
+                    comment = deepCopy(providedComments[i]);
+                    comment.extendedRange = [0, tree.range[0]];
+                    comments.push(comment);
+                }
+                tree.leadingComments = comments;
+            }
+            return tree;
+        }
+
+        for (i = 0, len = providedComments.length; i < len; i += 1) {
+            comments.push(extendCommentRange(deepCopy(providedComments[i]), tokens));
+        }
+
+        // This is based on John Freeman's implementation.
+        cursor = 0;
+        traverse(tree, {
+            enter: function (node) {
+                var comment;
+
+                while (cursor < comments.length) {
+                    comment = comments[cursor];
+                    if (comment.extendedRange[1] > node.range[0]) {
+                        break;
+                    }
+
+                    if (comment.extendedRange[1] === node.range[0]) {
+                        if (!node.leadingComments) {
+                            node.leadingComments = [];
+                        }
+                        node.leadingComments.push(comment);
+                        comments.splice(cursor, 1);
+                    } else {
+                        cursor += 1;
+                    }
+                }
+
+                // already out of owned node
+                if (cursor === comments.length) {
+                    return VisitorOption.Break;
+                }
+
+                if (comments[cursor].extendedRange[0] > node.range[1]) {
+                    return VisitorOption.Skip;
+                }
+            }
+        });
+
+        cursor = 0;
+        traverse(tree, {
+            leave: function (node) {
+                var comment;
+
+                while (cursor < comments.length) {
+                    comment = comments[cursor];
+                    if (node.range[1] < comment.extendedRange[0]) {
+                        break;
+                    }
+
+                    if (node.range[1] === comment.extendedRange[0]) {
+                        if (!node.trailingComments) {
+                            node.trailingComments = [];
+                        }
+                        node.trailingComments.push(comment);
+                        comments.splice(cursor, 1);
+                    } else {
+                        cursor += 1;
+                    }
+                }
+
+                // already out of owned node
+                if (cursor === comments.length) {
+                    return VisitorOption.Break;
+                }
+
+                if (comments[cursor].extendedRange[0] > node.range[1]) {
+                    return VisitorOption.Skip;
+                }
+            }
+        });
+
+        return tree;
+    }
+
+    exports.version = '1.3.1';
     exports.Syntax = Syntax;
     exports.traverse = traverse;
     exports.replace = replace;
+    exports.attachComments = attachComments;
     exports.VisitorKeys = VisitorKeys;
     exports.VisitorOption = VisitorOption;
     exports.Controller = Controller;
