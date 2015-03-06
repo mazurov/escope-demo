@@ -2,11 +2,12 @@
   "name": "escope-demo",
   "version": "0.1.0",
   "dependencies": {
-    "requirejs": "~2.1.4",
+    "requirejs": "2.1.4",
     "modernizr": "~2.6.2",
     "jquery": "~1.9.1",
-    "escope": "~1.0.0",
-    "esprima": "~1.0.4",
+    "escope": "latest",
+    "esprima": "latest",
+    "estraverse": "latest",
     "codemirror": "latest"
   },
   "devDependencies": {}
