@@ -2,7 +2,7 @@
   "name": "escope-demo2",
   "version": "0.2.0",
   "dependencies": {
-    "escope": "~2.0.5",
+    "escope": "~2.0.6",
     "esprima": "~1.2.5",
     "codemirror": "~5.0.0"
   },
