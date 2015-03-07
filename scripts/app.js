@@ -9585,6 +9585,7 @@ CodeMirror.defineMIME("application/typescript", { name: "javascript", typescript
         return {
             optimistic: false,
             directive: false,
+            nodejsScope: false,
             sourceType: 'script',  // one of ['script', 'module']
             ecmaVersion: 5
         };
@@ -9820,7 +9821,11 @@ CodeMirror.defineMIME("application/typescript", { name: "javascript", typescript
         }
 
         if (scope.type === 'function') {
-            body = block.body;
+            if (block.type === 'Program') {
+                body = block;
+            } else {
+                body = block.body;
+            }
         } else if (scope.type === 'global') {
             body = block;
         } else {
@@ -9879,7 +9884,8 @@ CodeMirror.defineMIME("application/typescript", { name: "javascript", typescript
     var SCOPE_NORMAL = 0,
         SCOPE_MODULE = 1,
         SCOPE_FUNCTION_EXPRESSION_NAME = 2,
-        SCOPE_TDZ = 3;
+        SCOPE_TDZ = 3,
+        SCOPE_FUNCTION = 4;
 
     /**
      * @class Scope
@@ -9894,7 +9900,7 @@ CodeMirror.defineMIME("application/typescript", { name: "javascript", typescript
             (scopeType === SCOPE_MODULE) ? 'module' :
             (block.type === Syntax.BlockStatement) ? 'block' :
             (block.type === Syntax.SwitchStatement) ? 'switch' :
-            (block.type === Syntax.FunctionExpression || block.type === Syntax.FunctionDeclaration || block.type === Syntax.ArrowFunctionExpression) ? 'function' :
+            (scopeType === SCOPE_FUNCTION || block.type === Syntax.FunctionExpression || block.type === Syntax.FunctionDeclaration || block.type === Syntax.ArrowFunctionExpression) ? 'function' :
             (block.type === Syntax.CatchClause) ? 'catch' :
             (block.type === Syntax.ForInStatement || block.type === Syntax.ForOfStatement || block.type === Syntax.ForStatement) ? 'for' :
             (block.type === Syntax.WithStatement) ? 'with' :
@@ -10275,6 +10281,10 @@ CodeMirror.defineMIME("application/typescript", { name: "javascript", typescript
         return this.__options.ignoreEval;
     };
 
+    ScopeManager.prototype.__isNodejsScope = function () {
+        return this.__options.nodejsScope;
+    };
+
     ScopeManager.prototype.isModule = function () {
         return this.__options.sourceType === 'module';
     };
@@ -10350,6 +10360,10 @@ CodeMirror.defineMIME("application/typescript", { name: "javascript", typescript
 
     ScopeManager.prototype.__nestScope = function (node, isMethodDefinition) {
         return new Scope(this, node, isMethodDefinition, SCOPE_NORMAL);
+    };
+
+    ScopeManager.prototype.__nestForceFunctionScope = function (node) {
+        return new Scope(this, node, false, SCOPE_FUNCTION);
     };
 
     ScopeManager.prototype.__nestModuleScope = function (node) {
@@ -10716,6 +10730,12 @@ CodeMirror.defineMIME("application/typescript", { name: "javascript", typescript
         Program: function (node) {
             this.scopeManager.__nestScope(node);
 
+            if (this.scopeManager.__isNodejsScope()) {
+                // Force strictness of GlobalScope to false when using node.js scope.
+                this.currentScope().isStrict = false;
+                this.scopeManager.__nestForceFunctionScope(node);
+            }
+
             if (this.scopeManager.__isES6() && this.scopeManager.isModule()) {
                 this.scopeManager.__nestModuleScope(node);
             }
@@ -10898,6 +10918,9 @@ CodeMirror.defineMIME("application/typescript", { name: "javascript", typescript
      * @param {Object} providedOptions - Options that tailor the scope analysis
      * @param {boolean} [providedOptions.optimistic=false] - the optimistic flag
      * @param {boolean} [providedOptions.directive=false]- the directive flag
+     * @param {boolean} [providedOptions.nodejsScope=false]- whether the whole
+     * script is executed under node.js environment. When enabled, escope adds
+     * a function scope immediately following the global scope.
      * @param {boolean} [providedOptions.ignoreEval=false]- whether to check 'eval()' calls
      * @param {string} [providedOptions.sourceType='script']- the source type of the script. one of 'script' and 'module'
      * @param {number} [providedOptions.ecmaVersion=5]- which ECMAScript version is considered
@@ -13548,7 +13571,7 @@ module.exports={
   "description": "ECMAScript scope analyzer",
   "homepage": "http://github.com/estools/escope.html",
   "main": "escope.js",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "engines": {
     "node": ">=0.4.0"
   },
@@ -13593,24 +13616,24 @@ module.exports={
     "lint": "gulp lint",
     "jsdoc": "jsdoc escope.js README.md"
   },
-  "gitHead": "4f8f6234ec1a0a73242d557c9cca7dbb8263226f",
+  "gitHead": "dc4b85631e98011268fc426dd824c74e353d5b48",
   "bugs": {
     "url": "https://github.com/estools/escope/issues"
   },
-  "_id": "escope@2.0.5",
-  "_shasum": "6ea002a1e87da4ea0c8d24d124aa079589f1ed90",
-  "_from": "escope@>=2.0.5 <2.1.0",
+  "_id": "escope@2.0.6",
+  "_shasum": "c1bac24870605bb384ba073dce0417c9305eddeb",
+  "_from": "escope@>=2.0.6 <2.1.0",
   "_npmVersion": "1.4.28",
   "_npmUser": {
     "name": "constellation",
     "email": "utatane.tea@gmail.com"
   },
   "dist": {
-    "shasum": "6ea002a1e87da4ea0c8d24d124aa079589f1ed90",
-    "tarball": "http://registry.npmjs.org/escope/-/escope-2.0.5.tgz"
+    "shasum": "c1bac24870605bb384ba073dce0417c9305eddeb",
+    "tarball": "http://registry.npmjs.org/escope/-/escope-2.0.6.tgz"
   },
   "directories": {},
-  "_resolved": "https://registry.npmjs.org/escope/-/escope-2.0.5.tgz"
+  "_resolved": "https://registry.npmjs.org/escope/-/escope-2.0.6.tgz"
 }
 
 },{}],111:[function(require,module,exports){
