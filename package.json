@@ -1,8 +1,8 @@
 {
-  "name": "escope-demo2",
+  "name": "escope-demo",
   "version": "0.2.0",
   "dependencies": {
-    "escope": "~2.0.6",
+    "escope": "~2.0.7",
     "esprima": "~1.2.5",
     "codemirror": "~5.0.0"
   },
