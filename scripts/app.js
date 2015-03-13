@@ -10160,11 +10160,18 @@ CodeMirror.defineMIME("application/typescript", { name: "javascript", typescript
     Scope.prototype.__referencing = function __referencing(node, assign, writeExpr, maybeImplicitGlobal, partial) {
         var ref;
         // because Array element may be null
-        if (node && node.type === Syntax.Identifier) {
-            ref = new Reference(node, this, assign || Reference.READ, writeExpr, maybeImplicitGlobal, !!partial);
-            this.references.push(ref);
-            this.__left.push(ref);
+        if (!node || node.type !== Syntax.Identifier) {
+            return;
         }
+
+        // Specially handle like `this`.
+        if (node.name === 'super') {
+            return;
+        }
+
+        ref = new Reference(node, this, assign || Reference.READ, writeExpr, maybeImplicitGlobal, !!partial);
+        this.references.push(ref);
+        this.__left.push(ref);
     };
 
     Scope.prototype.__detectEval = function __detectEval() {
@@ -10458,20 +10465,23 @@ CodeMirror.defineMIME("application/typescript", { name: "javascript", typescript
     };
 
     Importer.prototype.ImportNamespaceSpecifier = function (node) {
-        if (node.id) {
-            this.visitImport(node.id, node);
+        var local = (node.local || node.id);
+        if (local) {
+            this.visitImport(local, node);
         }
     };
 
     Importer.prototype.ImportDefaultSpecifier = function (node) {
-        this.visitImport(node.id, node);
+        var local = (node.local || node.id);
+        this.visitImport(local, node);
     };
 
     Importer.prototype.ImportSpecifier = function (node) {
+        var local = (node.local || node.id);
         if (node.name) {
             this.visitImport(node.name, node);
         } else {
-            this.visitImport(node.id, node);
+            this.visitImport(local, node);
         }
     };
 
@@ -13571,7 +13581,7 @@ module.exports={
   "description": "ECMAScript scope analyzer",
   "homepage": "http://github.com/estools/escope.html",
   "main": "escope.js",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "engines": {
     "node": ">=0.4.0"
   },
@@ -13589,13 +13599,14 @@ module.exports={
     "es6-map": "^0.1.1",
     "es6-weak-map": "^0.1.2",
     "esrecurse": "^1.2.0",
-    "estraverse": ">=1.9.0",
+    "estraverse": "^1.9.1",
     "util-extend": "^1.0.1"
   },
   "devDependencies": {
-    "browserify": "^7.0.0",
-    "chai": "~1.10.0",
-    "coffee-script": "~1.8.0",
+    "browserify": "^9.0.3",
+    "chai": "^2.1.1",
+    "coffee-script": "^1.9.1",
+    "espree": "^1.11.0",
     "esprima": "~1.2.2",
     "gulp": "~3.8.10",
     "gulp-eslint": "^0.2.0",
@@ -13616,24 +13627,25 @@ module.exports={
     "lint": "gulp lint",
     "jsdoc": "jsdoc escope.js README.md"
   },
-  "gitHead": "dc4b85631e98011268fc426dd824c74e353d5b48",
+  "gitHead": "9cfba97e6290b9685329a10ea23263e39be373ec",
   "bugs": {
     "url": "https://github.com/estools/escope/issues"
   },
-  "_id": "escope@2.0.6",
-  "_shasum": "c1bac24870605bb384ba073dce0417c9305eddeb",
-  "_from": "escope@>=2.0.6 <2.1.0",
-  "_npmVersion": "1.4.28",
+  "_id": "escope@2.0.7",
+  "_shasum": "b3dc8e605eddccf1c83ec8cf7cce6d04427ec8eb",
+  "_from": "escope@>=2.0.7 <2.1.0",
+  "_npmVersion": "2.0.0-alpha-5",
   "_npmUser": {
     "name": "constellation",
     "email": "utatane.tea@gmail.com"
   },
   "dist": {
-    "shasum": "c1bac24870605bb384ba073dce0417c9305eddeb",
-    "tarball": "http://registry.npmjs.org/escope/-/escope-2.0.6.tgz"
+    "shasum": "b3dc8e605eddccf1c83ec8cf7cce6d04427ec8eb",
+    "tarball": "http://registry.npmjs.org/escope/-/escope-2.0.7.tgz"
   },
   "directories": {},
-  "_resolved": "https://registry.npmjs.org/escope/-/escope-2.0.6.tgz"
+  "_resolved": "https://registry.npmjs.org/escope/-/escope-2.0.7.tgz",
+  "readme": "ERROR: No README data found!"
 }
 
 },{}],111:[function(require,module,exports){
