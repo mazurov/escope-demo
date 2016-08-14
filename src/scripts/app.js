@@ -17,10 +17,10 @@ var run = function() {
         e.preventDefault();
         var node = $(this).data('node');
         var level = $(this).data('level');
-        var icon = $(this.parentNode).find('i.icon-plus');
+        var icon = $(this.parentNode).find('i.glyphicon-plus');
         addChilds(this.parentNode, node, level);
-        icon.removeClass('icon-plus');
-        icon.addClass('icon-minus');
+        icon.removeClass('glyphicon-plus');
+        icon.addClass('glyphicon-minus');
         $(this).unbind('click', unfold);
         $(this).bind('click', fold);
     };
