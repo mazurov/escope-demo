@@ -1,3 +1,9 @@
+require('codemirror/lib/codemirror.css');
+require('codemirror/theme/monokai.css');
+require('../styles/main.css');
+require('bootstrap/dist/css/bootstrap.css');
+
+
 var CodeMirror = require('codemirror');
 require('codemirror/mode/javascript/javascript');
 var $ = require('jquery');
@@ -21,9 +27,9 @@ var run = function() {
 
     var fold = function(e) {
         e.preventDefault();
-        var icon = $(this.parentNode).find('i.icon-minus');
-        icon.removeClass('icon-minus');
-        icon.addClass('icon-plus');
+        var icon = $(this.parentNode).find('i.glyphicon-minus');
+        icon.removeClass('glyphicon-minus');
+        icon.addClass('glyphicon-plus');
 
         $(this.parentNode).find('ul').remove();
         $(this).unbind('click', fold);
@@ -102,9 +108,9 @@ var run = function() {
             innerValue = '<b>' + key + '</b>: ' + value;
             if (hasChilds(node)) {
                 icon = 'plus';
-                innerValue = '<a href="#" class="tree-open"><i class="icon-' + icon + '"></i>' + innerValue + '</a> ';
+                innerValue = '<a href="#" class="tree-open"><i class="glyphicon glyphicon-' + icon + '"></i>' + innerValue + '</a> ';
                 if (node.hasOwnProperty('loc')) {
-                    locLink = $('<a href="#" class="tree-show"><i class="icon-hand-left"></i></a>');
+                    locLink = $('<a href="#" class="tree-show"><i class="glyphicon glyphicon-hand-right"></i></a>');
                     locLink.click(function(e) {
                         e.preventDefault();
                         showInEditor(node.loc);
@@ -132,12 +138,22 @@ var run = function() {
         return result;
     };
 
+    var ecmaVersion = $('input[name="es"]:checked').val();
+    var sourceType = $('input[name="st"]:checked').val();
+    var body = $("body")
     var draw = function() {
+        body.removeClass("bg-danger");
+        try{
         var ast = esprima.parse(editor.getValue(), {
             range: true,
-            loc: true
+            loc: true,
+            sourceType: sourceType,
         });
-        var scopes = escope.analyze(ast).scopes;
+        var scopes = escope.analyze(ast, {sourceType: sourceType, ecmaVersion: parseInt(ecmaVersion)}).scopes;
+        } catch(e){
+            body.addClass("bg-danger");
+            console.error(e);
+        }
         $('#treeview').html('');
         var nodes = traverseNode(scopes, true);
         $('#treeview').append(nodes);
@@ -153,9 +169,13 @@ var run = function() {
 
 
     editor.on('change', draw);
+    $('input[name="es"]').change(function() { ecmaVersion = $(this).val(); draw();});
+    $('input[name="st"]').change(function() { sourceType = $(this).val(); draw();})
+
     draw();
 
     $('#escope-version').text(escope.version);
+    $('#esprima-version').text(esprima.version);
 
 };  // end run
 
